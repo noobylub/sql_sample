@@ -1,0 +1,74 @@
+SELECT
+  R.user_id,
+  COUNT(DISTINCT R.event_id) AS events_attended,
+  U.username,
+  U.goal,
+  U.occupation_description,
+  U.interests,
+  U.occupation_status,
+  COALESCE(FI.following_count, 0) AS following_count,
+  FI.following_list,
+  COALESCE(FI.followers_count, 0) AS follower_count,
+  FI.followers_list,
+  (
+    SELECT
+      COUNT(av.avoider_id) AS avoided_count
+    FROM
+      avoids as av
+   	WHERE 
+    	av.avoided_id = R.user_id
+    GROUP BY
+      av.avoided_id
+    ORDER BY
+      avoided_count DESC
+  )
+FROM
+  recordings AS R
+  LEFT JOIN users AS U ON R.user_id = U.id
+  LEFT JOIN (
+    SELECT
+      f.follower_id AS followee_id,
+      ARRAY_AGG(f.followee_id) AS following_list,
+      COUNT(f.followee_id) AS following_count,
+      (
+        SELECT
+          COUNT(f2.follower_id)
+        FROM
+          follows AS f2
+        WHERE
+          f2.followee_id = f.follower_id
+        GROUP BY
+          f2.followee_id
+      ) AS followers_count,
+      (
+        SELECT
+          ARRAY_AGG(f2.follower_id)
+        FROM
+          follows AS f2
+        WHERE
+          f2.followee_id = f.follower_id
+        GROUP BY
+          f2.followee_id
+      ) AS followers_list
+    FROM
+      follows AS f
+    GROUP BY
+      f.follower_id
+  ) AS FI ON FI.followee_id = R.user_id
+WHERE
+  R.event_id IS NOT NULL
+GROUP BY
+  R.user_id,
+  U.username,
+  U.goal,
+  U.occupation_description,
+  U.interests,
+  U.occupation_status,
+  FI.following_count,
+  FI.following_list,
+  follower_count,
+  FI.followers_list
+HAVING
+  COUNT(DISTINCT R.event_id) > 2
+ORDER BY
+  follower_count DESC;

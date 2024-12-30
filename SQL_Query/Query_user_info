@@ -1,0 +1,34 @@
+WITH ParticipationData AS (
+    SELECT 
+        user_id, 
+        COUNT(user_id) AS total_participation, 
+        U.username, 
+        U.goal, 
+        U.occupation_description, 
+        U.interests, 
+        U.occupation_status
+    FROM recordings
+    LEFT JOIN users AS U ON recordings.user_id = U.id
+   
+    GROUP BY user_id, U.username, U.goal, U.occupation_description, U.interests, U.occupation_status
+    HAVING COUNT(user_id) > 2
+    ORDER BY total_participation DESC
+),
+QuartileData AS (
+    SELECT 
+        user_id, 
+        total_participation, 
+        username, 
+        goal, 
+        occupation_description, 
+        interests, 
+        occupation_status,
+        NTILE(4) OVER (ORDER BY total_participation DESC) AS quartile
+    FROM ParticipationData
+)
+SELECT * 
+FROM QuartileData
+WHERE quartile = 1
+
+
+  
